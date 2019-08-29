@@ -1,5 +1,6 @@
 from base64 import b64decode
 import json
+import math
 
 from flask import Blueprint
 
@@ -11,6 +12,7 @@ from CTFd.models import (
 from CTFd.plugins.challenges import BaseChallenge
 from CTFd.utils.uploads import delete_file
 from CTFd.utils.user import get_ip
+from CTFd.utils.modes import get_model
 from .api import (
     update_problem,
     prepare_challenge,
@@ -59,6 +61,9 @@ class ICPCChallenge(BaseChallenge):
             "id": challenge.id,
             "name": challenge.name,
             "value": challenge.value,
+            "initial": challenge.initial,
+            "decay": challenge.decay,
+            "minimum": challenge.minimum,
             "description": challenge.description,
             "category": challenge.category,
             "state": challenge.state,
@@ -83,6 +88,8 @@ class ICPCChallenge(BaseChallenge):
         data = request.form or request.get_json()
 
         for attr, value in data.items():
+            if attr in ("initial", "minimum", "decay"):
+                value = float(value)
             if attr in [
                 'id', 'name', 'value', 'description', 'category', 'state', 'max_attempts', 'type', 'type_data',
 
@@ -94,6 +101,33 @@ class ICPCChallenge(BaseChallenge):
                 i: int(data[i]) for i in
                 ['max_cpu_time', 'max_real_time', 'max_memory', 'max_process_number', 'max_output_size', 'max_stack']
             })
+
+        Model = get_model()
+
+        solve_count = (
+            Solves.query.join(Model, Solves.account_id == Model.id)
+            .filter(
+                Solves.challenge_id == challenge.id,
+                Model.hidden == False,
+                Model.banned == False,
+            )
+            .count()
+        )
+
+        # It is important that this calculation takes into account floats.
+        # Hence this file uses from __future__ import division
+        value = (
+            ((challenge.minimum - challenge.initial) / (challenge.decay ** 2))
+            * (solve_count ** 2)
+        ) + challenge.initial
+
+        value = math.ceil(value)
+
+        if value < challenge.minimum:
+            value = challenge.minimum
+
+        challenge.value = value
+
         db.session.commit()
         return challenge
 
@@ -142,14 +176,46 @@ class ICPCChallenge(BaseChallenge):
 
     @staticmethod
     def solve(user, team, challenge, request):
+        chal = ICPCChallenge.query.filter_by(id=challenge.id).first()
         data = request.form or request.get_json()
-        db.session.add(Solves(
+
+        Model = get_model()
+
+        solve = Solves(
             user_id=user.id,
             team_id=team.id if team else None,
             challenge_id=challenge.id,
             ip=get_ip(request),
             provided=json.dumps(cache[data['submission_nonce']])
-        ))
+        )
+        db.session.add(solve)
+
+        solve_count = (
+            Solves.query.join(Model, Solves.account_id == Model.id)
+            .filter(
+                Solves.challenge_id == challenge.id,
+                Model.hidden == False,
+                Model.banned == False,
+            )
+            .count()
+        )
+
+        # We subtract -1 to allow the first solver to get max point value
+        solve_count -= 1
+
+        # It is important that this calculation takes into account floats.
+        # Hence this file uses from __future__ import division
+        value = (
+            ((chal.minimum - chal.initial) / (chal.decay ** 2)) * (solve_count ** 2)
+        ) + chal.initial
+
+        value = math.ceil(value)
+
+        if value < chal.minimum:
+            value = chal.minimum
+
+        chal.value = value
+
         cache.pop(data['submission_nonce'])
         db.session.commit()
         db.session.close()
@@ -158,6 +224,10 @@ class ICPCChallenge(BaseChallenge):
 class ICPCModel(Challenges):  # db
     __mapper_args__ = {"polymorphic_identity": "programming"}
     id = db.Column(None, db.ForeignKey("challenges.id"), primary_key=True)
+
+    initial = db.Column(db.Integer, default=0)
+    minimum = db.Column(db.Integer, default=0)
+    decay = db.Column(db.Integer, default=0)
 
     problem_id = db.Column(db.Integer, default=-1)  # 指在评测端的id
 
