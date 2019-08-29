@@ -1,5 +1,6 @@
-from base64 import b64decode
 import json
+import math
+from base64 import b64decode
 
 from flask import Blueprint
 
@@ -9,6 +10,7 @@ from CTFd.models import (
     Flags, db, ChallengeFiles
 )
 from CTFd.plugins.challenges import BaseChallenge
+from CTFd.utils.modes import get_model
 from CTFd.utils.uploads import delete_file
 from CTFd.utils.user import get_ip
 from .api import (
@@ -89,6 +91,31 @@ class ICPCChallenge(BaseChallenge):
                 'max_cpu_time', 'max_real_time', 'max_memory', 'max_process_number', 'max_output_size', 'max_stack'
             ]:
                 setattr(challenge, attr, value)
+            elif attr in ("initial", "minimum", "decay"):
+                value = float(value)
+                setattr(challenge, attr, value)
+        Model = get_model()
+        solve_count = (
+            Solves.query.join(Model, Solves.account_id == Model.id)
+                .filter(
+                Solves.challenge_id == challenge.id,
+                Model.hidden == False,
+                Model.banned == False,
+            )
+                .count()
+        )
+        value = (
+                        ((challenge.minimum - challenge.initial) / (challenge.decay ** 2))
+                        * (solve_count ** 2)
+                ) + challenge.initial
+
+        value = math.ceil(value)
+
+        if value < challenge.minimum:
+            value = challenge.minimum
+
+        challenge.value = value
+
         if challenge.problem_id != -1 and challenge_prepared(challenge.problem_id):
             update_problem(challenge.problem_id, limits={
                 i: int(data[i]) for i in
@@ -143,6 +170,7 @@ class ICPCChallenge(BaseChallenge):
     @staticmethod
     def solve(user, team, challenge, request):
         data = request.form or request.get_json()
+        Model = get_model()
         db.session.add(Solves(
             user_id=user.id,
             team_id=team.id if team else None,
@@ -150,6 +178,31 @@ class ICPCChallenge(BaseChallenge):
             ip=get_ip(request),
             provided=json.dumps(cache[data['submission_nonce']])
         ))
+
+        solve_count = (
+            Solves.query.join(Model, Solves.account_id == Model.id)
+                .filter(
+                Solves.challenge_id == challenge.id,
+                Model.hidden == False,
+                Model.banned == False,
+            )
+                .count()
+        )
+
+        # We subtract -1 to allow the first solver to get max point value
+        solve_count -= 1
+
+        # It is important that this calculation takes into account floats.
+        # Hence this file uses from __future__ import division
+        value = (((challenge.minimum - challenge.initial) / (challenge.decay ** 2)) * (
+                    solve_count ** 2)) + challenge.initial
+
+        value = math.ceil(value)
+
+        if value < challenge.minimum:
+            value = challenge.minimum
+
+        challenge.value = value
         cache.pop(data['submission_nonce'])
         db.session.commit()
         db.session.close()
@@ -158,6 +211,10 @@ class ICPCChallenge(BaseChallenge):
 class ICPCModel(Challenges):  # db
     __mapper_args__ = {"polymorphic_identity": "programming"}
     id = db.Column(None, db.ForeignKey("challenges.id"), primary_key=True)
+
+    initial = db.Column(db.Integer, default=0)
+    minimum = db.Column(db.Integer, default=0)
+    decay = db.Column(db.Integer, default=0)
 
     problem_id = db.Column(db.Integer, default=-1)  # 指在评测端的id
 
