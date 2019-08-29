@@ -13,5 +13,5 @@ def load(app):
     app.db.create_all()
     CHALLENGE_CLASSES["programming"] = ICPCChallenge
     register_plugin_assets_directory(
-        app, base_path="/plugins/ICPC_challenges/assets/"
+        app, base_path="/plugins/ICPC_Challenges/assets/"
     )

@@ -26,19 +26,19 @@ cache = {}
 class ICPCChallenge(BaseChallenge):
     id = "programming"
     name = "programming"
-    route = "/plugins/programming_challenges/assets/"
+    route = "/plugins/ICPC_Challenges/assets/"
     templates = {  # Handlebars templates used for each aspect of challenge editing & viewing
-        "create": "/plugins/ICPC_challenges/assets/create.html",
-        "update": "/plugins/ICPC_challenges/assets/update.html",
-        "view": "/plugins/ICPC_challenges/assets/view.html",
+        "create": "/plugins/ICPC_Challenges/assets/create.html",
+        "update": "/plugins/ICPC_Challenges/assets/update.html",
+        "view": "/plugins/ICPC_Challenges/assets/view.html",
     }
     scripts = {  # Scripts that are loaded when a template is loaded
-        "create": "/plugins/ICPC_challenges/assets/create.js",
-        "update": "/plugins/ICPC_challenges/assets/update.js",
-        "view": "/plugins/ICPC_challenges/assets/view.js",
+        "create": "/plugins/ICPC_Challenges/assets/create.js",
+        "update": "/plugins/ICPC_Challenges/assets/update.js",
+        "view": "/plugins/ICPC_Challenges/assets/view.js",
     }
     blueprint = Blueprint(
-        "programming_challenges",
+        "ICPC_Challenges",
         __name__,
         template_folder="templates",
         static_folder="assets",
@@ -223,6 +223,8 @@ class ICPCChallenge(BaseChallenge):
 
 class ICPCModel(Challenges):  # db
     __mapper_args__ = {"polymorphic_identity": "programming"}
+    __table_args__ = {"useexisting": True}
+
     id = db.Column(None, db.ForeignKey("challenges.id"), primary_key=True)
 
     initial = db.Column(db.Integer, default=0)
