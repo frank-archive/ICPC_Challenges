@@ -26,14 +26,14 @@ class ICPCChallenge(BaseChallenge):
     name = "programming"
     route = "/plugins/programming_challenges/assets/"
     templates = {  # Handlebars templates used for each aspect of challenge editing & viewing
-        "create": "/plugins/programming_challenges/assets/create.html",
-        "update": "/plugins/programming_challenges/assets/update.html",
-        "view": "/plugins/programming_challenges/assets/view.html",
+        "create": "/plugins/ICPC_challenges/assets/create.html",
+        "update": "/plugins/ICPC_challenges/assets/update.html",
+        "view": "/plugins/ICPC_challenges/assets/view.html",
     }
     scripts = {  # Scripts that are loaded when a template is loaded
-        "create": "/plugins/programming_challenges/assets/create.js",
-        "update": "/plugins/programming_challenges/assets/update.js",
-        "view": "/plugins/programming_challenges/assets/view.js",
+        "create": "/plugins/ICPC_challenges/assets/create.js",
+        "update": "/plugins/ICPC_challenges/assets/update.js",
+        "view": "/plugins/ICPC_challenges/assets/view.js",
     }
     blueprint = Blueprint(
         "programming_challenges",

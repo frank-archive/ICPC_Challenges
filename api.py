@@ -2,7 +2,7 @@ import requests
 
 from CTFd.models import db
 from .config import JUDGE_ADDR, JUDGE_PORT, JUDGE_TOKEN
-from .models import JudgeCaseFiles
+import CTFd.plugins.ICPC_Challenges.models as models
 
 ses = requests.session()
 ses.headers.update({'X-Judge-Server-Token': JUDGE_TOKEN})
@@ -64,7 +64,7 @@ def prepare_challenge(challenge):
     try:
         if challenge.problem_id != -1 and challenge_prepared(challenge.id):
             return True
-        files = JudgeCaseFiles.query.filter_by(challenge_id=challenge.id).all()
+        files = models.JudgeCaseFiles.query.filter_by(challenge_id=challenge.id).all()
         data = {
             'cases': [],
             'limits': {
