@@ -51,7 +51,7 @@ def challenge_prepared(prob_id):
     try:
         if res.json()['content']['exists']:
             return True
-        if res['status'] != 200:
+        if res.status_code != 200:
             ses.get(f'http://{JUDGE_ADDR}:{JUDGE_PORT}/init')
     except Exception:
         pass
