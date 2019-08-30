@@ -176,7 +176,7 @@ class ICPCChallenge(BaseChallenge):
 
     @staticmethod
     def solve(user, team, challenge, request):
-        chal = ICPCChallenge.query.filter_by(id=challenge.id).first()
+        chal = ICPCModel.query.filter_by(id=challenge.id).first()
         data = request.form or request.get_json()
 
         Model = get_model()
@@ -210,7 +210,6 @@ class ICPCChallenge(BaseChallenge):
         ) + chal.initial
 
         value = math.ceil(value)
-
         if value < chal.minimum:
             value = chal.minimum
 
