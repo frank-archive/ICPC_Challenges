@@ -121,7 +121,7 @@ def request_judge(prob_id, code, lang):
 def update_problem(prob_id, limits=None, cases=None):
     res = {'status': 0, 'message': '', 'content': ''}
     if limits:
-        res = ses.post(
+        res = ses.get(
             f'http://{JUDGE_ADDR}:{JUDGE_PORT}/problem/update/limits/{prob_id}',
             json=limits
         ).json()
@@ -136,7 +136,7 @@ def update_problem(prob_id, limits=None, cases=None):
 @judge_online
 def query_details(submission_id):
     try:
-        res = ses.post(
+        res = ses.get(
             f'http://{JUDGE_ADDR}:{JUDGE_PORT}/submission/{submission_id}',
         ).json()
         return res
