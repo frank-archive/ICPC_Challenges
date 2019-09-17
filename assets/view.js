@@ -4,7 +4,7 @@ window.challenge.renderer = new markdownit({
     html: true,
     linkify: true,
 });
-var vendor_path = '/plugins/ICPC_Challenges/assets/vendor'
+var vendor_path = '/plugins/CTFd_ICPC_Challenges/assets/vendor'
 jQuery.cachedScript = function (url, options) {
     options = $.extend(options || {}, {
         dataType: "script",

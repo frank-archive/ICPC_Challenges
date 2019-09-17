@@ -206,7 +206,7 @@ class DynICPCChallenge(BaseChallenge):
 
 
 class DynICPCModel(Challenges):  # db
-    __mapper_args__ = {"polymorphic_identity": "ICPC_dynamic"}
+    __mapper_args__ = {"polymorphic_identity": "icpc_dynamic"}
     __table_args__ = {"useexisting": True}
 
     id = db.Column(None, db.ForeignKey("challenges.id"), primary_key=True)
