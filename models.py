@@ -13,6 +13,7 @@ from CTFd.plugins.challenges import BaseChallenge
 from CTFd.utils.uploads import delete_file
 from CTFd.utils.user import get_ip
 from CTFd.utils.modes import get_model
+from CTFd.utils.logging import log
 from .api import (
     update_problem,
     prepare_challenge,
@@ -24,16 +25,16 @@ from .api import (
 class DynICPCChallenge(BaseChallenge):
     id = "icpc_dynamic"
     name = "icpc_dynamic"
-    route = "/plugins/CTFd-ICPC-challenges/assets/"
+    route = "/plugins/CTFd_ICPC_Challenges/assets/"
     templates = {  # Handlebars templates used for each aspect of challenge editing & viewing
-        "create": "/plugins/CTFd-ICPC-challenges/assets/create.html",
-        "update": "/plugins/CTFd-ICPC-challenges/assets/update.html",
-        "view": "/plugins/CTFd-ICPC-challenges/assets/view.html",
+        "create": "/plugins/CTFd_ICPC_Challenges/assets/create.html",
+        "update": "/plugins/CTFd_ICPC_Challenges/assets/update.html",
+        "view": "/plugins/CTFd_ICPC_Challenges/assets/view.html",
     }
     scripts = {  # Scripts that are loaded when a template is loaded
-        "create": "/plugins/CTFd-ICPC-challenges/assets/create.js",
-        "update": "/plugins/CTFd-ICPC-challenges/assets/update.js",
-        "view": "/plugins/CTFd-ICPC-challenges/assets/view.js",
+        "create": "/plugins/CTFd_ICPC_Challenges/assets/create.js",
+        "update": "/plugins/CTFd_ICPC_Challenges/assets/update.js",
+        "view": "/plugins/CTFd_ICPC_Challenges/assets/view.js",
     }
     blueprint = Blueprint(
         "ICPC_Challenges",
@@ -95,29 +96,30 @@ class DynICPCChallenge(BaseChallenge):
             ]:
                 setattr(challenge, attr, value)
         if challenge.problem_id != -1 and challenge_prepared(challenge.problem_id):
-            update_problem(challenge.problem_id, limits={
-                i: int(data[i]) for i in
-                ['max_cpu_time', 'max_real_time', 'max_memory', 'max_process_number', 'max_output_size', 'max_stack']
-            })
+            try:
+                update_problem(challenge.problem_id, limits={
+                    i: int(data[i]) for i in
+                    ['max_cpu_time', 'max_real_time', 'max_memory', 'max_process_number', 'max_output_size', 'max_stack']
+                })
+            except AssertionError:
+                log('programming', '[{date}] update problem error')
 
         Model = get_model()
 
         solve_count = (
-            Solves.query.join(Model, Solves.account_id == Model.id)
-                .filter(
+            Solves.query.join(Model, Solves.account_id == Model.id).filter(
                 Solves.challenge_id == challenge.id,
-                Model.hidden == False,
-                Model.banned == False,
-            )
-                .count()
+                not Model.hidden,
+                not Model.banned,
+            ).count()
         )
 
         # It is important that this calculation takes into account floats.
         # Hence this file uses from __future__ import division
         value = (
-                        ((challenge.minimum - challenge.initial) / (challenge.decay ** 2))
-                        * (solve_count ** 2)
-                ) + challenge.initial
+            ((challenge.minimum - challenge.initial) / (challenge.decay ** 2))
+            * (solve_count ** 2)
+        ) + challenge.initial
 
         value = math.ceil(value)
 
@@ -160,7 +162,6 @@ class DynICPCChallenge(BaseChallenge):
 
     @staticmethod
     def fail(user, team, challenge, request):
-        data = request.form or request.get_json()
         db.session.add(Fails(
             user_id=user.id,
             team_id=team.id if team else None,
