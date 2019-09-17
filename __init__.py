@@ -13,9 +13,9 @@ submission_template = '''
 <html>
 username: {{ user }}<br>
 language: {{ lang }}<br>
-<code>
+<code><pre>
 {{code}}
-</code>
+</pre></code><br>
 additional info:<br>
 {{additional}}
 </html>
