@@ -10,12 +10,12 @@ from .routes import cases_namespace
 def load(app):
     CTFd_API_v1.add_namespace(cases_namespace, '/cases')
 
-    @app.route('submission')
+    @app.route('/submission')
     @admins_only
     def list_submission():
         return json.dumps(submission_list())
 
-    @app.route('submission/<str:sub_id>')
+    @app.route('/submission/<sub_id>')
     @admins_only
     def get_submission(sub_id):
         return json.dumps(query_details(sub_id))

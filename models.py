@@ -14,12 +14,7 @@ from CTFd.utils.uploads import delete_file
 from CTFd.utils.user import get_ip
 from CTFd.utils.modes import get_model
 from CTFd.utils.logging import log
-from .api import (
-    update_problem,
-    prepare_challenge,
-    challenge_prepared,
-    request_judge
-)
+import CTFd.plugins.CTFd_ICPC_Challenges.api as api
 
 
 class DynICPCChallenge(BaseChallenge):
@@ -95,9 +90,9 @@ class DynICPCChallenge(BaseChallenge):
                 'max_cpu_time', 'max_real_time', 'max_memory', 'max_process_number', 'max_output_size', 'max_stack'
             ]:
                 setattr(challenge, attr, value)
-        if challenge.problem_id != -1 and challenge_prepared(challenge.problem_id):
+        if challenge.problem_id != -1 and api.challenge_prepared(challenge.problem_id):
             try:
-                update_problem(challenge.problem_id, limits={
+                api.update_problem(challenge.problem_id, limits={
                     i: int(data[i]) for i in
                     ['max_cpu_time', 'max_real_time', 'max_memory', 'max_process_number', 'max_output_size', 'max_stack']
                 })
@@ -150,10 +145,10 @@ class DynICPCChallenge(BaseChallenge):
     def attempt(challenge, request):
         r = request.form or request.get_json()
         r['code'] = b64decode(r['submission']).decode()
-        prepare_challenge(challenge)
+        api.prepare_challenge(challenge)
         pid = DynICPCModel.query.filter(
             DynICPCModel.id == challenge.id).first().problem_id
-        content = request_judge(pid, r['code'], r['language'])
+        content = api.request_judge(pid, r['code'], r['language'])
         request.judge_result = content
         if content['result'] != 0:
             return False, content['message']
