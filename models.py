@@ -22,20 +22,19 @@ from .api import (
 
 cache = {}
 
-
-class ICPCChallenge(BaseChallenge):
-    id = "programming"
-    name = "programming"
-    route = "/plugins/ICPC_Challenges/assets/"
+class DynICPCChallenge(BaseChallenge):
+    id = "icpc_dynamic"
+    name = "icpc_dynamic"
+    route = "/plugins/CTFd-ICPC-challenges/assets/"
     templates = {  # Handlebars templates used for each aspect of challenge editing & viewing
-        "create": "/plugins/ICPC_Challenges/assets/create.html",
-        "update": "/plugins/ICPC_Challenges/assets/update.html",
-        "view": "/plugins/ICPC_Challenges/assets/view.html",
+        "create": "/plugins/CTFd-ICPC-challenges/assets/create.html",
+        "update": "/plugins/CTFd-ICPC-challenges/assets/update.html",
+        "view": "/plugins/CTFd-ICPC-challenges/assets/view.html",
     }
     scripts = {  # Scripts that are loaded when a template is loaded
-        "create": "/plugins/ICPC_Challenges/assets/create.js",
-        "update": "/plugins/ICPC_Challenges/assets/update.js",
-        "view": "/plugins/ICPC_Challenges/assets/view.js",
+        "create": "/plugins/CTFd-ICPC-challenges/assets/create.js",
+        "update": "/plugins/CTFd-ICPC-challenges/assets/update.js",
+        "view": "/plugins/CTFd-ICPC-challenges/assets/view.js",
     }
     blueprint = Blueprint(
         "ICPC_Challenges",
@@ -47,7 +46,7 @@ class ICPCChallenge(BaseChallenge):
     @staticmethod
     def create(request):
         data = request.form or request.get_json()
-        challenge = ICPCModel(**data)
+        challenge = DynICPCModel(**data)
 
         db.session.add(challenge)
         db.session.commit()
@@ -56,7 +55,7 @@ class ICPCChallenge(BaseChallenge):
 
     @staticmethod
     def read(challenge):
-        challenge = ICPCModel.query.filter_by(id=challenge.id).first()
+        challenge = DynICPCModel.query.filter_by(id=challenge.id).first()
         return {
             "id": challenge.id,
             "name": challenge.name,
@@ -70,10 +69,10 @@ class ICPCChallenge(BaseChallenge):
             "max_attempts": challenge.max_attempts,
             "type": challenge.type,
             "type_data": {
-                "id": ICPCChallenge.id,
-                "name": ICPCChallenge.name,
-                "templates": ICPCChallenge.templates,
-                "scripts": ICPCChallenge.scripts,
+                "id": DynICPCChallenge.id,
+                "name": DynICPCChallenge.name,
+                "templates": DynICPCChallenge.templates,
+                "scripts": DynICPCChallenge.scripts,
             },
             'max_cpu_time': challenge.max_cpu_time,
             'max_real_time': challenge.max_real_time,
@@ -142,7 +141,7 @@ class ICPCChallenge(BaseChallenge):
         ChallengeFiles.query.filter_by(challenge_id=challenge.id).delete()
         Tags.query.filter_by(challenge_id=challenge.id).delete()
         Hints.query.filter_by(challenge_id=challenge.id).delete()
-        ICPCModel.query.filter_by(id=challenge.id).delete()
+        DynICPCModel.query.filter_by(id=challenge.id).delete()
         Challenges.query.filter_by(id=challenge.id).delete()
         db.session.commit()
 
@@ -151,8 +150,8 @@ class ICPCChallenge(BaseChallenge):
         r = request.form or request.get_json()
         r['code'] = b64decode(r['submission']).decode()
         prepare_challenge(challenge)
-        pid = ICPCModel.query.filter(
-            ICPCModel.id == challenge.id).first().problem_id
+        pid = DynICPCModel.query.filter(
+            DynICPCModel.id == challenge.id).first().problem_id
         content = request_judge(pid, r['code'], r['language'])
         cache[r['submission_nonce']] = content
         if content['result'] != 0:
@@ -176,11 +175,8 @@ class ICPCChallenge(BaseChallenge):
 
     @staticmethod
     def solve(user, team, challenge, request):
-        chal = ICPCModel.query.filter_by(id=challenge.id).first()
-        data = request.form or request.get_json()
-
+        chal = DynICPCModel.query.filter_by(id=challenge.id).first()
         Model = get_model()
-
         solve = Solves(
             user_id=user.id,
             team_id=team.id if team else None,
@@ -240,7 +236,7 @@ class ICPCModel(Challenges):  # db
     max_stack = db.Column(db.Integer, default=32 * 1024 * 1024)
 
     def __init__(self, *args, **kwargs):
-        super(ICPCModel, self).__init__(**kwargs)
+        super(DynICPCModel, self).__init__(**kwargs)
         self.initial = kwargs["value"]
 
 

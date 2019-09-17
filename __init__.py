@@ -11,7 +11,7 @@ def load(app):
     CTFd_API_v1.add_namespace(cases_namespace, '/cases')
 
     app.db.create_all()
-    CHALLENGE_CLASSES["programming"] = ICPCChallenge
+    CHALLENGE_CLASSES["icpc_dynamic"] = DynICPCChallenge
     register_plugin_assets_directory(
-        app, base_path="/plugins/ICPC_Challenges/assets/"
+        app, base_path="/plugins/CTFd-ICPC-challenges/assets/"
     )
