@@ -1,5 +1,6 @@
 from base64 import b64decode
 import json
+import math
 
 from flask import Blueprint
 
@@ -11,6 +12,7 @@ from CTFd.models import (
 from CTFd.plugins.challenges import BaseChallenge
 from CTFd.utils.uploads import delete_file
 from CTFd.utils.user import get_ip
+from CTFd.utils.modes import get_model
 from .api import (
     update_problem,
     prepare_challenge,
@@ -18,25 +20,23 @@ from .api import (
     request_judge
 )
 
-cache = {}
 
-
-class ICPCChallenge(BaseChallenge):
-    id = "programming"
-    name = "programming"
-    route = "/plugins/programming_challenges/assets/"
+class DynICPCChallenge(BaseChallenge):
+    id = "icpc_dynamic"
+    name = "icpc_dynamic"
+    route = "/plugins/CTFd-ICPC-challenges/assets/"
     templates = {  # Handlebars templates used for each aspect of challenge editing & viewing
-        "create": "/plugins/ICPC_challenges/assets/create.html",
-        "update": "/plugins/ICPC_challenges/assets/update.html",
-        "view": "/plugins/ICPC_challenges/assets/view.html",
+        "create": "/plugins/CTFd-ICPC-challenges/assets/create.html",
+        "update": "/plugins/CTFd-ICPC-challenges/assets/update.html",
+        "view": "/plugins/CTFd-ICPC-challenges/assets/view.html",
     }
     scripts = {  # Scripts that are loaded when a template is loaded
-        "create": "/plugins/ICPC_challenges/assets/create.js",
-        "update": "/plugins/ICPC_challenges/assets/update.js",
-        "view": "/plugins/ICPC_challenges/assets/view.js",
+        "create": "/plugins/CTFd-ICPC-challenges/assets/create.js",
+        "update": "/plugins/CTFd-ICPC-challenges/assets/update.js",
+        "view": "/plugins/CTFd-ICPC-challenges/assets/view.js",
     }
     blueprint = Blueprint(
-        "programming_challenges",
+        "ICPC_Challenges",
         __name__,
         template_folder="templates",
         static_folder="assets",
@@ -45,7 +45,7 @@ class ICPCChallenge(BaseChallenge):
     @staticmethod
     def create(request):
         data = request.form or request.get_json()
-        challenge = ICPCModel(**data)
+        challenge = DynICPCModel(**data)
 
         db.session.add(challenge)
         db.session.commit()
@@ -54,21 +54,24 @@ class ICPCChallenge(BaseChallenge):
 
     @staticmethod
     def read(challenge):
-        challenge = ICPCModel.query.filter_by(id=challenge.id).first()
+        challenge = DynICPCModel.query.filter_by(id=challenge.id).first()
         return {
             "id": challenge.id,
             "name": challenge.name,
             "value": challenge.value,
+            "initial": challenge.initial,
+            "decay": challenge.decay,
+            "minimum": challenge.minimum,
             "description": challenge.description,
             "category": challenge.category,
             "state": challenge.state,
             "max_attempts": challenge.max_attempts,
             "type": challenge.type,
             "type_data": {
-                "id": ICPCChallenge.id,
-                "name": ICPCChallenge.name,
-                "templates": ICPCChallenge.templates,
-                "scripts": ICPCChallenge.scripts,
+                "id": DynICPCChallenge.id,
+                "name": DynICPCChallenge.name,
+                "templates": DynICPCChallenge.templates,
+                "scripts": DynICPCChallenge.scripts,
             },
             'max_cpu_time': challenge.max_cpu_time,
             'max_real_time': challenge.max_real_time,
@@ -83,6 +86,8 @@ class ICPCChallenge(BaseChallenge):
         data = request.form or request.get_json()
 
         for attr, value in data.items():
+            if attr in ("initial", "minimum", "decay"):
+                value = float(value)
             if attr in [
                 'id', 'name', 'value', 'description', 'category', 'state', 'max_attempts', 'type', 'type_data',
 
@@ -94,6 +99,33 @@ class ICPCChallenge(BaseChallenge):
                 i: int(data[i]) for i in
                 ['max_cpu_time', 'max_real_time', 'max_memory', 'max_process_number', 'max_output_size', 'max_stack']
             })
+
+        Model = get_model()
+
+        solve_count = (
+            Solves.query.join(Model, Solves.account_id == Model.id)
+                .filter(
+                Solves.challenge_id == challenge.id,
+                Model.hidden == False,
+                Model.banned == False,
+            )
+                .count()
+        )
+
+        # It is important that this calculation takes into account floats.
+        # Hence this file uses from __future__ import division
+        value = (
+                        ((challenge.minimum - challenge.initial) / (challenge.decay ** 2))
+                        * (solve_count ** 2)
+                ) + challenge.initial
+
+        value = math.ceil(value)
+
+        if value < challenge.minimum:
+            value = challenge.minimum
+
+        challenge.value = value
+
         db.session.commit()
         return challenge
 
@@ -108,7 +140,7 @@ class ICPCChallenge(BaseChallenge):
         ChallengeFiles.query.filter_by(challenge_id=challenge.id).delete()
         Tags.query.filter_by(challenge_id=challenge.id).delete()
         Hints.query.filter_by(challenge_id=challenge.id).delete()
-        ICPCModel.query.filter_by(id=challenge.id).delete()
+        DynICPCModel.query.filter_by(id=challenge.id).delete()
         Challenges.query.filter_by(id=challenge.id).delete()
         db.session.commit()
 
@@ -117,10 +149,10 @@ class ICPCChallenge(BaseChallenge):
         r = request.form or request.get_json()
         r['code'] = b64decode(r['submission']).decode()
         prepare_challenge(challenge)
-        pid = ICPCModel.query.filter(
-            ICPCModel.id == challenge.id).first().problem_id
+        pid = DynICPCModel.query.filter(
+            DynICPCModel.id == challenge.id).first().problem_id
         content = request_judge(pid, r['code'], r['language'])
-        cache[r['submission_nonce']] = content
+        request.judge_result = content
         if content['result'] != 0:
             return False, content['message']
         else:
@@ -134,30 +166,58 @@ class ICPCChallenge(BaseChallenge):
             team_id=team.id if team else None,
             challenge_id=challenge.id,
             ip=get_ip(request),
-            provided=json.dumps(cache[data['submission_nonce']])
+            provided=request.judge_result['submission_id']
         ))
-        cache.pop(data['submission_nonce'])
         db.session.commit()
         db.session.close()
 
     @staticmethod
     def solve(user, team, challenge, request):
-        data = request.form or request.get_json()
-        db.session.add(Solves(
+        chal = DynICPCModel.query.filter_by(id=challenge.id).first()
+        Model = get_model()
+        solve = Solves(
             user_id=user.id,
             team_id=team.id if team else None,
             challenge_id=challenge.id,
             ip=get_ip(request),
-            provided=json.dumps(cache[data['submission_nonce']])
-        ))
-        cache.pop(data['submission_nonce'])
+            provided=request.judge_result['submission_id']
+        )
+        db.session.add(solve)
+        solve_count = (
+            Solves.query.join(Model, Solves.account_id == Model.id).filter(
+                Solves.challenge_id == challenge.id,
+                not Model.hidden,
+                not Model.banned,
+            ).count()
+        )
+
+        # We subtract -1 to allow the first solver to get max point value
+        solve_count -= 1
+
+        # It is important that this calculation takes into account floats.
+        # Hence this file uses from __future__ import division
+        value = (
+            ((chal.minimum - chal.initial) / (chal.decay ** 2)) * (solve_count ** 2)
+        ) + chal.initial
+
+        value = math.ceil(value)
+        if value < chal.minimum:
+            value = chal.minimum
+
+        chal.value = value
         db.session.commit()
         db.session.close()
 
 
-class ICPCModel(Challenges):  # db
-    __mapper_args__ = {"polymorphic_identity": "programming"}
+class DynICPCModel(Challenges):  # db
+    __mapper_args__ = {"polymorphic_identity": "ICPC_dynamic"}
+    __table_args__ = {"useexisting": True}
+
     id = db.Column(None, db.ForeignKey("challenges.id"), primary_key=True)
+
+    initial = db.Column(db.Integer, default=0)
+    minimum = db.Column(db.Integer, default=0)
+    decay = db.Column(db.Integer, default=0)
 
     problem_id = db.Column(db.Integer, default=-1)  # 指在评测端的id
 
@@ -169,7 +229,7 @@ class ICPCModel(Challenges):  # db
     max_stack = db.Column(db.Integer, default=32 * 1024 * 1024)
 
     def __init__(self, *args, **kwargs):
-        super(ICPCModel, self).__init__(**kwargs)
+        super(DynICPCModel, self).__init__(**kwargs)
         self.initial = kwargs["value"]
 
 

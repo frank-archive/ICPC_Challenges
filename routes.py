@@ -1,3 +1,4 @@
+from flask import request
 from CTFd.schemas.files import FileSchema
 from CTFd.utils.uploads import get_uploader
 from flask_restplus import Resource, Namespace
