@@ -149,3 +149,4 @@ def submission_list():
     res = ses.get(
         f'http://{JUDGE_ADDR}:{JUDGE_PORT}/submission'
     ).json()
+    return res
