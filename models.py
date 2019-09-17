@@ -20,7 +20,6 @@ from .api import (
     request_judge
 )
 
-cache = {}
 
 class DynICPCChallenge(BaseChallenge):
     id = "icpc_dynamic"
@@ -105,20 +104,20 @@ class DynICPCChallenge(BaseChallenge):
 
         solve_count = (
             Solves.query.join(Model, Solves.account_id == Model.id)
-            .filter(
+                .filter(
                 Solves.challenge_id == challenge.id,
                 Model.hidden == False,
                 Model.banned == False,
             )
-            .count()
+                .count()
         )
 
         # It is important that this calculation takes into account floats.
         # Hence this file uses from __future__ import division
         value = (
-            ((challenge.minimum - challenge.initial) / (challenge.decay ** 2))
-            * (solve_count ** 2)
-        ) + challenge.initial
+                        ((challenge.minimum - challenge.initial) / (challenge.decay ** 2))
+                        * (solve_count ** 2)
+                ) + challenge.initial
 
         value = math.ceil(value)
 
@@ -153,7 +152,7 @@ class DynICPCChallenge(BaseChallenge):
         pid = DynICPCModel.query.filter(
             DynICPCModel.id == challenge.id).first().problem_id
         content = request_judge(pid, r['code'], r['language'])
-        cache[r['submission_nonce']] = content
+        request.judge_result = content
         if content['result'] != 0:
             return False, content['message']
         else:
@@ -167,9 +166,8 @@ class DynICPCChallenge(BaseChallenge):
             team_id=team.id if team else None,
             challenge_id=challenge.id,
             ip=get_ip(request),
-            provided=json.dumps(cache[data['submission_nonce']])
+            provided=request.judge_result['submission_id']
         ))
-        cache.pop(data['submission_nonce'])
         db.session.commit()
         db.session.close()
 
@@ -182,18 +180,15 @@ class DynICPCChallenge(BaseChallenge):
             team_id=team.id if team else None,
             challenge_id=challenge.id,
             ip=get_ip(request),
-            provided=json.dumps(cache[data['submission_nonce']])
+            provided=request.judge_result['submission_id']
         )
         db.session.add(solve)
-
         solve_count = (
-            Solves.query.join(Model, Solves.account_id == Model.id)
-            .filter(
+            Solves.query.join(Model, Solves.account_id == Model.id).filter(
                 Solves.challenge_id == challenge.id,
-                Model.hidden == False,
-                Model.banned == False,
-            )
-            .count()
+                not Model.hidden,
+                not Model.banned,
+            ).count()
         )
 
         # We subtract -1 to allow the first solver to get max point value
@@ -210,14 +205,12 @@ class DynICPCChallenge(BaseChallenge):
             value = chal.minimum
 
         chal.value = value
-
-        cache.pop(data['submission_nonce'])
         db.session.commit()
         db.session.close()
 
 
-class ICPCModel(Challenges):  # db
-    __mapper_args__ = {"polymorphic_identity": "programming"}
+class DynICPCModel(Challenges):  # db
+    __mapper_args__ = {"polymorphic_identity": "ICPC_dynamic"}
     __table_args__ = {"useexisting": True}
 
     id = db.Column(None, db.ForeignKey("challenges.id"), primary_key=True)
