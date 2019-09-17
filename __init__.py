@@ -33,7 +33,7 @@ def load(app):
     @app.route('/submission/<sub_id>')
     @admins_only
     def get_submission(sub_id):
-        username = Submissions.query.filter_by(provided=sub_id).first().user_id
+        username = Submissions.query.filter_by(provided=sub_id).first().user
         res = api.query_details(sub_id)['content']
         return render_template_string(
             submission_template,
