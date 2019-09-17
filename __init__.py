@@ -35,6 +35,11 @@ def load(app):
     def get_submission(sub_id):
         username = Submissions.query.filter_by(provided=sub_id).first().user
         res = api.query_details(sub_id)['content']
+        try:
+            res['result'] = json.loads(res['result'])
+            res['result'] = json.dumps(res['result'], indent=4)
+        except:
+            pass
         return render_template_string(
             submission_template,
             user=username,
