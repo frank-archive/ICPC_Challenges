@@ -34,7 +34,7 @@ def load(app):
     @admins_only
     def get_submission(sub_id):
         username = Submissions.query.filter_by(provided=sub_id).first().user_id
-        res = api.query_details(sub_id)
+        res = api.query_details(sub_id)['content']
         return render_template_string(
             submission_template,
             user=username,
