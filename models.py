@@ -25,16 +25,16 @@ from .api import (
 class DynICPCChallenge(BaseChallenge):
     id = "icpc_dynamic"
     name = "icpc_dynamic"
-    route = "/plugins/CTFd-ICPC-challenges/assets/"
+    route = "/plugins/CTFd_ICPC_Challenges/assets/"
     templates = {  # Handlebars templates used for each aspect of challenge editing & viewing
-        "create": "/plugins/CTFd-ICPC-challenges/assets/create.html",
-        "update": "/plugins/CTFd-ICPC-challenges/assets/update.html",
-        "view": "/plugins/CTFd-ICPC-challenges/assets/view.html",
+        "create": "/plugins/CTFd_ICPC_Challenges/assets/create.html",
+        "update": "/plugins/CTFd_ICPC_Challenges/assets/update.html",
+        "view": "/plugins/CTFd_ICPC_Challenges/assets/view.html",
     }
     scripts = {  # Scripts that are loaded when a template is loaded
-        "create": "/plugins/CTFd-ICPC-challenges/assets/create.js",
-        "update": "/plugins/CTFd-ICPC-challenges/assets/update.js",
-        "view": "/plugins/CTFd-ICPC-challenges/assets/view.js",
+        "create": "/plugins/CTFd_ICPC_Challenges/assets/create.js",
+        "update": "/plugins/CTFd_ICPC_Challenges/assets/update.js",
+        "view": "/plugins/CTFd_ICPC_Challenges/assets/view.js",
     }
     blueprint = Blueprint(
         "ICPC_Challenges",

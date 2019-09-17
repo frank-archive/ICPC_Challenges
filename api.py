@@ -1,4 +1,4 @@
-import CTFd.plugins.ICPC_Challenges.models as models
+import CTFd.plugins.CTFd_ICPC_Challenges.models as models
 import requests
 
 from CTFd.models import db

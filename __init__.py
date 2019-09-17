@@ -23,5 +23,5 @@ def load(app):
     app.db.create_all()
     CHALLENGE_CLASSES["icpc_dynamic"] = DynICPCChallenge
     register_plugin_assets_directory(
-        app, base_path="/plugins/CTFd-ICPC-challenges/assets/"
+        app, base_path="/plugins/CTFd_ICPC_Challenges/assets/"
     )
