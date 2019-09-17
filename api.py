@@ -1,8 +1,8 @@
+import CTFd.plugins.ICPC_Challenges.models as models
 import requests
 
 from CTFd.models import db
 from .config import JUDGE_ADDR, JUDGE_PORT, JUDGE_TOKEN
-import CTFd.plugins.ICPC_Challenges.models as models
 
 ses = requests.session()
 ses.headers.update({'X-Judge-Server-Token': JUDGE_TOKEN})
@@ -120,17 +120,32 @@ def request_judge(prob_id, code, lang):
 @judge_online
 def update_problem(prob_id, limits=None, cases=None):
     res = {'status': 0, 'message': '', 'content': ''}
+    if limits:
+        res = ses.post(
+            f'http://{JUDGE_ADDR}:{JUDGE_PORT}/problem/update/limits/{prob_id}',
+            json=limits
+        ).json()
+    if cases:
+        res = ses.post(
+            f'http://{JUDGE_ADDR}:{JUDGE_PORT}/problem/update/cases/{prob_id}',
+            json=cases
+        ).json()
+    assert (res['status'] == 200)
+
+
+@judge_online
+def query_details(submission_id):
     try:
-        if limits:
-            res = ses.post(
-                f'http://{JUDGE_ADDR}:{JUDGE_PORT}/problem/update/limits/{prob_id}',
-                json=limits
-            ).json()
-        if cases:
-            res = ses.post(
-                f'http://{JUDGE_ADDR}:{JUDGE_PORT}/problem/update/cases/{prob_id}',
-                json=cases
-            ).json()
-        assert (res['status'] == 200)
-    except AssertionError:
-        return
+        res = ses.post(
+            f'http://{JUDGE_ADDR}:{JUDGE_PORT}/submission/{submission_id}',
+        ).json()
+        return res
+    except:
+        raise FileNotFoundError()
+
+
+@judge_online
+def submission_list():
+    res = ses.post(
+        f'http://{JUDGE_ADDR}:{JUDGE_PORT}/submission'
+    ).json()
