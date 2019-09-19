@@ -10,7 +10,7 @@ from CTFd.models import (
     Flags, db, ChallengeFiles
 )
 from CTFd.plugins.challenges import BaseChallenge
-from CTFd.utils.uploads import delete_file
+from CTFd.utils.uploads import delete_file, get_uploader
 from CTFd.utils.user import get_ip
 from CTFd.utils.modes import get_model
 from CTFd.utils.logging import log
@@ -131,10 +131,17 @@ class DynICPCChallenge(BaseChallenge):
         Fails.query.filter_by(challenge_id=challenge.id).delete()
         Solves.query.filter_by(challenge_id=challenge.id).delete()
         Flags.query.filter_by(challenge_id=challenge.id).delete()
+        
         files = ChallengeFiles.query.filter_by(challenge_id=challenge.id).all()
         for f in files:
             delete_file(f.id)
         ChallengeFiles.query.filter_by(challenge_id=challenge.id).delete()
+        uploader = get_uploader()
+        files = JudgeCaseFiles.query.filter_by(challenge_id=challenge_id).all()
+        for f in files:
+            uploader.delete(f.location)
+        JudgeCaseFiles.query.filter_by(challenge_id=challenge_id).delete()
+        
         Tags.query.filter_by(challenge_id=challenge.id).delete()
         Hints.query.filter_by(challenge_id=challenge.id).delete()
         DynICPCModel.query.filter_by(id=challenge.id).delete()
@@ -149,6 +156,7 @@ class DynICPCChallenge(BaseChallenge):
         pid = DynICPCModel.query.filter(
             DynICPCModel.id == challenge.id).first().problem_id
         content = api.request_judge(pid, r['code'], r['language'])
+        print(content)
         request.judge_result = content
         if content['result'] != 0:
             return False, content['message']

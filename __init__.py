@@ -17,7 +17,9 @@ language: {{ lang }}<br>
 {{code}}
 </pre></code><br>
 additional info:<br>
+<code><pre>
 {{additional}}
+</pre></code>
 </html>
 '''
 
